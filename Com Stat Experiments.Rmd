@@ -1,0 +1,639 @@
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate) #for date extraction and manipulation
+library(ggthemes)
+library(moments) #used to calculate skewness and kurtosis
+library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
+
+excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+
+ram <- read_excel(excel_file_hwinfo, sheet = "ram_test")
+```
+
+
+################################################### XMP MHz for RAM ################################################### 
+
+
+```{r}
+#Getting the trial number order for the test set 
+
+set.seed(123)  # set the seed to reproduce the same results
+digits <- 1:8  # create a vector of digits 1-8
+shuffled_digits <- sample(digits)  # randomly order the digits
+shuffled_digits  # print the shuffled digits
+```
+
+
+###### Visualizing the dataset prior to the t-test and checking assumptions ###### 
+
+```{r}
+#Parallel Dot Plot
+
+ram %>% ggplot(aes(x= MHz, y = timespy_total)) + 
+  geom_point() + 
+  labs(y = "Timespy Score",
+       title = "Parallel Dot Plot of Timespy Score and Ram MHz") + 
+  theme_clean()
+```
+
+
+```{r}
+#Residual vs predicted graph 
+
+# create a linear regression model
+reg_model_ram <- lm(timespy_total ~ MHz, data = ram)
+
+# calculate predicted values and residuals and inputs the values into the original data frame
+ram$predicted <- predict(reg_model_ram)
+ram$residual <- residuals(reg_model_ram)
+
+# plot the residuals vs predicted values using a scatter plot
+ggplot(ram, aes(x = predicted, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Predicted values", 
+       y = "Residuals",
+       title = "Residual vs Predicted plot") +
+  theme_clean()
+```
+
+
+```{r}
+#Normal Quantiles plot
+
+ggplot(ram, aes(sample = reg_model_ram$residuals)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  labs(x = "Normal Quantiles",
+       y = "Residuals",
+       title = "Normal Quantiles Plot to Examine Normality")
+
+# Calculate skewness
+skewness(reg_model_ram$residuals)
+
+# Calculate kurtosis
+kurtosis(reg_model_ram$residuals)
+
+hist(reg_model_ram$residuals)
+summary(reg_model_ram$residuals)
+```
+
+
+```{r}
+#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
+
+ggplot(ram, aes(x = Trial, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Trial Number", 
+       y = "Residuals",
+       title = "Independence Assumption") +
+  theme_clean()
+```
+
+
+```{r}
+#Means table grouped by ram speed (MHz)
+ram %>% group_by(MHz) %>% summarise(n_mean = mean(timespy_total))
+
+#Organizing the timespy data by creating vector of just timespy scores when ram speed is 4800 MHz and 6000MHz
+
+r_4800 <- ram %>% filter(MHz == 4800) %>% select(timespy_total) 
+r_6000 <- ram %>% filter(MHz == 6000) %>% select(timespy_total) 
+
+#conducting a t-test (difference in means) between the timespy score when ram MHz is set to default 4800 vs EXPO setting of 6000
+
+t_test_ram <- t.test(r_6000,r_4800)
+
+t_test_ram
+
+############## CANT GO ANY FURHTER IN THIS ANALYSIS SINCE I'VE ONLY GOT TWO MEANS TO COMPARE NO ANOVA ############## 
+```
+
+
+
+
+################################################### CPU Experiment Desktop ################################################### 
+
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate) #for date extraction and manipulation
+library(ggthemes)
+library(moments) #used to calculate skewness and kurtosis 
+library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
+
+#Reading in the excel file
+excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+
+cpu <- read_excel(excel_file_hwinfo, sheet = "cpu_test")
+
+#Converting voltage and clock speed into factor variables for the following analysis 
+
+cpu$Voltage <- factor(cpu$Voltage, levels = c(1.1, 1.175, 1.225, 1.275))
+cpu$Clock <- factor(cpu$Clock, levels = c(4, 4.5, 5, 5.4))
+```
+
+
+```{r}
+#Getting the trial number order for the test set 
+
+set.seed(123)  # set the seed to reproduce the same results
+digits <- 1:32  # create a vector of digits 1-8
+shuffled_digits <- sample(digits)  # randomly order the digits
+shuffled_digits  # print the shuffled digits
+```
+
+
+###### Visualizing the dataset prior to the t-test and checking assumptions ###### 
+
+
+```{r}
+#Parallel Dot Plot
+
+cpu$treatment <- paste(cpu$Clock, cpu$Voltage, sep = " & ")
+
+cpu %>% ggplot(aes(x= treatment, y = Cinebench)) + 
+  geom_point(position = position_jitter(width = 0.2, height = 0.15)) + 
+  
+  labs(y = "Cinebench Score",
+       x = "Core Clock (MHz) & Voltage (Volt)",
+       title = "Parallel Dot Plot of Core Clocks and Voltage",
+       caption = "Figure 1.1") + 
+  
+  theme_clean() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+#Residual vs predicted graph 
+
+# create a linear regression model 
+base_model_cpu <- lm(Cinebench ~ Voltage + Clock , data = cpu)
+
+# calculate predicted values and residuals and inputs the values into the original data frame
+cpu$predicted <- predict(base_model_cpu)
+cpu$residual <- residuals(base_model_cpu)
+
+# plot the residuals vs predicted values using a scatter plot
+ggplot(cpu, aes(x = predicted, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Predicted values", 
+       y = "Residuals",
+       title = "Residual vs Predicted plot",
+       caption = "Figure 1.2") +
+  theme_clean()
+```
+
+
+```{r}
+#Normal Quantiles plot
+ggplot(cpu, aes(sample = base_model_cpu$residuals)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  labs(x = "Normal Quantiles",
+       y = "Residuals",
+       title = "Normal Quantiles Plot to Examine Normality")
+
+# Calculate skewness
+skewness(base_model_cpu$residuals)
+
+# Calculate kurtosis
+kurtosis(base_model_cpu$residuals)
+
+hist(base_model_cpu$residuals)
+summary(base_model_cpu$residuals)
+
+```
+
+
+```{r}
+#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
+ggplot(cpu, aes(x = Trial, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Trial Number", 
+       y = "Residuals",
+       title = "Independence Assumption") +
+  theme_clean()
+
+```
+
+
+```{r}
+#Interaction Plot - no interaction 
+
+mean_cinebench_cpu <- cpu %>% 
+  group_by(Voltage, Clock) %>% 
+  summarise(m_cinebench = mean(Cinebench, na.rm = TRUE), n = n()) %>% 
+  ungroup() %>% 
+  #complete(Voltage, Clock) %>% 
+  as.data.frame()
+
+#mean_cinebench_cpu$Voltage <- factor(mean_cinebench_cpu$Voltage, levels = c(1.1, 1.175, 1.225, 1.275))
+#mean_cinebench_cpu$Clock <- factor(mean_cinebench_cpu$Clock, levels = c(4, 4.5, 5, 5.4))
+
+
+#Interaction Plot with Voltage on x-axis (looks nicer)
+ggplot(mean_cinebench_cpu, aes(x = Voltage, y = m_cinebench, color = Clock, group = Clock)) +
+  geom_point(size = 2, na.rm = TRUE) +
+  geom_line(size = 1, na.rm = TRUE) +
+  
+  scale_color_manual(values = c("4" = "green", "4.5" = "red",  "5" = "blue", "5.4" = "purple")) + 
+  
+  scale_x_discrete(limits = c("1.1", "1.175", "1.225", "1.275")) +
+  
+  labs(x = "Clock Speed MHz", y = "Cinebench Score") +
+  theme_bw() +
+  guides(color = guide_legend(reverse = TRUE))
+
+
+# Create a column for line type
+mean_cinebench_cpu$linetype <- ifelse(mean_cinebench_cpu$Voltage == "1.1", "solid",
+                                      ifelse(mean_cinebench_cpu$Voltage == "1.175", "dashed",
+                                             ifelse(mean_cinebench_cpu$Voltage == "1.225", "dotted", "dotted")))
+
+#Interaction Plot with clock on the x-axis (not nice visually)
+ggplot(mean_cinebench_cpu, aes(x = Clock, y = m_cinebench, color = Voltage, group = Voltage)) +
+  geom_point(size = 2, na.rm = TRUE) +
+  geom_line(aes(linetype = linetype), size = 1, na.rm = TRUE) +
+  
+  scale_color_manual(values = c("1.1" = "green", "1.175" = "red",  "1.225" = "blue", "1.275" = "purple")) + 
+  
+   scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash"), guide = "none") + # Set line type for each factor level
+  
+  scale_x_discrete(limits = c("4", "4.5", "5", "5.4")) +
+  
+  labs(x = "Clock Speed MHz", y = "Cinebench Score") +
+  theme_bw() 
+
+#If the lines in an interaction plot are on top of each other, it suggests that there is no interaction effect between the two variables being plotted. This means that the effect of one variable on the response variable is the same regardless of the level of the other variable.
+
+#In other words, if you have an interaction plot of two factors A and B on a response variable Y, and the lines representing the different levels of A are parallel to each other across all levels of B, then there is no interaction effect between A and B. This means that the effect of A on Y is the same regardless of the level of B.
+
+#On the other hand, if the lines representing the different levels of A are not parallel across all levels of B, then there is an interaction effect between A and B. This suggests that the effect of A on Y depends on the level of B.
+```
+
+
+#Regression Model
+```{r}
+#Voltage:Clock is the interaction variable(but it;s not significant)
+
+cpu$Voltage<- as.numeric(cpu$Voltage)
+cpu$Clock<- as.numeric(cpu$Clock)
+
+cpu_model <- lm(Cinebench ~ temp + power + Voltage + Clock + Voltage:Clock, data = cpu)
+summary(cpu_model)
+anova(cpu_model)
+
+#Testing regression models with just one of the main effects 
+mod <- lm(Cinebench ~ power, data = cpu)
+summary(mod)
+```
+
+
+#Optimization of Voltage and CPU clock for more efficient power and temps  
+```{r eval=FALSE, include=FALSE}
+# Set the maximum temperature and power draw values that the algorithm will use to find the optimal combination of voltage and clock speed.
+max_temp <- 85
+max_power <- 90
+
+# This line of code defines a function called predict_score() that takes two arguments, voltage and clock_speed, and returns the predicted Cinebench score for those values of voltage and clock speed, while holding the temperature and power draw fixed at the maximum values.
+predict_score <- function(voltage, clock_speed) {
+  predict(cpu_model, newdata = data.frame(temp = max_temp, power = max_power, Voltage = voltage, Clock = clock_speed))
+}
+
+
+# These lines of code define the ranges of voltage and clock speed values that the algorithm will search over in order to find the optimal combination of settings. The seq() function is used to generate sequences of values that span the minimum to maximum values in the cpu data frame, with 100 evenly spaced values.
+voltage_range <- seq(min(cpu$Voltage), max(cpu$Voltage), length.out = 100)
+clock_speed_range <- seq(min(cpu$Clock), max(cpu$Clock), length.out = 100)
+
+#These lines of code initialize variables that will be used to store the maximum predicted Cinebench score and the corresponding values of voltage and clock speed that achieve it.
+max_score <- -Inf
+optimal_voltage <- NA
+optimal_clock_speed <- NA
+
+# Find the optimal combination of voltage and clock speed using a brute-force search
+#This line of code checks whether the combination of voltage and clock speed currently being evaluated produces a higher predicted Cinebench score than the current maximum, while also satisfying the constraints on temperature and power draw. The all() function ensures that all of the conditions are true before executing the code within the braces.
+for (i in 1:length(voltage_range)) {
+  for (j in 1:length(clock_speed_range)) {
+    if (all(c(predict_score(voltage_range[i], clock_speed_range[j])) > max_score, 
+            cpu[which(cpu$Voltage == voltage_range[i] & cpu$Clock == clock_speed_range[j]), "temp"] <= max_temp,
+            cpu[which(cpu$Voltage == voltage_range[i] & cpu$Clock == clock_speed_range[j]), "power"] <= max_power)) {
+      
+      #These lines of code update the max_score, optimal_voltage, and optimal_clock_speed variables with the values of voltage, clock speed, and predicted score        for the current combination of settings if it produces a higher score than the previous best combination.
+      max_score <- predict_score(voltage_range[i], clock_speed_range[j])
+      optimal_voltage <- voltage_range[i]
+      optimal_clock_speed <- clock_speed_range[j]
+    }
+  }
+}
+
+# Print the optimal settings and predicted score
+cat("Optimal voltage:", optimal_voltage, "\n")
+cat("Optimal clock speed:", optimal_clock_speed, "\n")
+cat("Predicted score:", max_score, "\n")
+```
+
+
+# Confidence Interval Chart
+```{r}
+# obtain the 95% confidence intervals for main effects of voltage and clock speed
+
+ci_volts <- emmeans(cpu_model, ~ Voltage)
+ci_clock <- emmeans(cpu_model, ~ Clock)
+
+
+# obtain the 95% confidence intervals for simple effects
+ci_both <- emmeans(cpu_model, ~ Voltage + Clock)
+```
+
+
+
+
+
+###### CPU Experiment Laptop ###### 
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate) #for date extraction and manipulation
+library(ggthemes)
+library(moments) #used to calculate skewness and kurtosis 
+library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
+library(corrplot)
+
+excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+
+cpu_lap <- read_excel(excel_file_hwinfo, sheet = "cpu_lap")
+
+#Converting voltage and clock speed into factor variables for the following analysis 
+
+cpu_lap$Voltage <- factor(cpu_lap$Voltage, levels = c(0, -80.1, -160.2))
+cpu_lap$Clock <- factor(cpu_lap$Clock, levels = c(3.3, 3.4, 3.5))
+```
+
+
+```{r}
+#Parallel Dot Plot (Can't put the x axis in same order as SAS)
+
+#Creating a new variable called treatment that combines my two predictors together for easy visualization
+cpu_lap$treatment <- paste(cpu_lap$Voltage, cpu_lap$Clock, sep = " & ")
+
+cpu_lap %>% ggplot(aes(x= treatment, y = Cinebench)) + 
+  geom_point(position = position_jitter(width = 0.2, height = 0.15)) + 
+  labs(y = "Cinebench Score",
+       x = "Core Clock (MHz) & Voltage (Volt)",
+       title = "Parallel Dot Plot of Core Clocks and Voltage") + 
+  theme_clean() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+
+```{r}
+# create a linear regression model 
+model_cpu_lap <- lm(Cinebench ~ Voltage + Clock, data = cpu_lap)
+
+summary(model_cpu_lap)
+```
+
+
+```{r}
+#Residual vs predicted graph
+
+# calculate predicted values and residuals and inputs the values into the original data frame
+cpu_lap$predicted <- predict(model_cpu_lap)
+cpu_lap$residual <- residuals(model_cpu_lap)
+
+# plot the residuals vs predicted values using a scatter plot
+ggplot(cpu_lap, aes(x = predicted, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Predicted values", 
+       y = "Residuals",
+       title = "Residual vs Predicted plot") +
+  theme_clean()
+```
+
+
+```{r}
+#Normal Quantiles plot
+ggplot(cpu_lap, aes(sample = model_cpu_lap$residuals)) + 
+  stat_qq(color  = "steelblue") + 
+  stat_qq_line( color = "darkorange") + 
+  #scale_y_continuous(limits = c(-155, 110)) +
+  labs(x = "Normal Quantiles",
+       y = "Residuals",
+       title = "Normal Quantiles Plot to Examine Normality") +
+  theme_bw()
+
+#ks.test(model_cpu_lap$residuals, "pnorm")
+#shapiro.test(model_cpu_lap$residuals)
+
+# Calculate skewness
+skewness(model_cpu_lap$residuals)
+
+# Calculate kurtosis
+kurtosis(model_cpu_lap$residuals)
+
+
+hist(model_cpu_lap$residuals)
+summary(model_cpu_lap$residuals)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+# Helped me figure out what the problem with the QQ plot was 
+qqnorm(model_cpu_lap$residuals, main = "Quantile plot")
+qqline(model_cpu_lap$residuals)
+
+# Create a quantile plot
+par(mar = c(5, 5, 4, 2) + 0.1) # adjust the margins
+qqnorm(model_cpu_lap$residuals, 
+       main = "Quantile plot of Residuals",
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles",
+       pch = 20, # change the point character
+       col = "steelblue", # change the point color
+       cex.main = 1.2, # increase the font size of the title
+       cex.lab = 1.1, # increase the font size of the axis labels
+       cex.axis = 1.1 # increase the font size of the axis tick labels
+       )
+qqline(model_cpu_lap$residuals, col = "darkorange", lwd = 2) # change the line color and width
+```
+
+
+```{r}
+#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
+ggplot(cpu_lap, aes(x = Trial, y = residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "Trial Number", 
+       y = "Residuals",
+       title = "Independence Assumption") +
+  theme_clean()
+
+```
+
+
+```{r}
+#Interaction Plot 
+
+mean_cinebench_cpulap <- cpu_lap %>% group_by(Voltage, Clock) %>% summarise(m_cinebench = mean(Cinebench), n = n()) %>% ungroup() %>% as.data.frame()
+
+#mean_cinebench_cpulap$Voltage <- factor(mean_cinebench_cpulap$Voltage, levels = c(0, -80.1, -160.2))
+#mean_cinebench_cpulap$Clock <- factor(mean_cinebench_cpulap$Clock, levels = c(3.3, 3.4, 3.5))
+
+
+#Interaction Plot
+ggplot(mean_cinebench_cpulap, aes(x = Clock, y = m_cinebench, color = Voltage, group = Voltage)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  
+  scale_color_manual(values = c("0" = "green", "-80.1" = "red",  "-160.2" = "blue")) + 
+  
+  scale_x_discrete(limits = c("3.3", "3.4", "3.5"), expand = c(.01, .01)) +
+  
+  labs(x = "Clock Speed MHz", y = "Cinebench Score") +
+  theme_bw() 
+
+
+#An interaction plot with parallel lines suggests that the effect of one variable on the response variable is consistent across the levels of the other variable. In other words, the relationship between the response variable and one predictor variable is the same regardless of the level of the other predictor variable.
+
+#If the top line has a greater slope than the bottom lines, it suggests that the effect of the predictor variable on the response variable differs across the levels of the other predictor variable. This suggests that there is an interaction effect between the two predictor variables.
+
+#To determine if the interaction effect is statistically significant, you can perform an analysis of variance (ANOVA) or a regression analysis that includes an interaction term. If the p-value associated with the interaction term is less than your chosen significance level, it suggests that the interaction effect is statistically significant.
+```
+
+
+# Confidence Interval Chart
+```{r}
+# obtain the 95% confidence intervals for main effects of voltage and clock speed
+
+ci_volts <- emmeans(model_cpu_lap, ~ Voltage)
+ci_clock <- emmeans(model_cpu_lap, ~ Clock)
+
+
+# obtain the 95% confidence intervals for simple effects
+ci_both <- emmeans(model_cpu_lap, ~ Voltage + Clock)
+
+#In statistics, a main effect refers to the overall effect of one independent variable on the dependent variable, averaged across all levels of the other independent variables. In other words, a main effect represents the relationship between an independent variable and the dependent variable while ignoring the other independent variables in the model. For example, in a study examining the effect of a drug on blood pressure, the main effect of the drug represents the average effect of the drug on blood pressure, without considering other factors that may affect blood pressure.
+
+#On the other hand, a simple effect refers to the effect of an independent variable on the dependent variable at a specific level of another independent variable. In other words, a simple effect represents the relationship between an independent variable and the dependent variable while holding other independent variables in the model constant at a particular level. For example, in a study examining the effect of a drug on blood pressure, the simple effect of the drug at a particular dose level represents the effect of the drug on blood pressure at that specific dose level, while holding other factors constant.
+
+#To illustrate the difference between a main effect and a simple effect, consider a study examining the effect of a new teaching method (Method A vs. Method B) on students' test scores, while controlling for students' prior knowledge (low vs. high). In this study, the main effect of teaching method represents the average effect of Method A compared to Method B, across all levels of students' prior knowledge. The simple effect of teaching method at a particular level of students' prior knowledge represents the effect of Method A compared to Method B, but only for students at that specific level of prior knowledge.
+
+#In summary, a main effect represents the overall effect of an independent variable on the dependent variable, while a simple effect represents the effect of an independent variable at a specific level of another independent variable.
+
+
+```
+
+
+
+
+
+```{r}
+anova(model_cpu_lap)
+```
+
+
+
+
+
+
+
+###### GPU Overlock ###### 
+
+
+#ANOVA 
+```{r}
+#There's two ways I could do this:
+#  1. big t-test comparing GPU presets on AMD's adrenaline software
+#  2. 2-way ANOVA by manually changing the voltage and GPU clock speed (with reference from AMD's presets)
+```
+
+
+
+###### MLR or K-near neighbor predicting timespy score  ###### 
+
+```{r}
+#1. Have to go through all the statistical checks to ensure we can run MLR
+
+#2. Need to make sure there are no gaps in the GPU test to avoid weird affects on our variables of interest
+
+
+```
+
+
+
+#Correlation Matrix
+```{r}
+#I can't do a correlation matrix with the above data because all the variables aren't numeric 
+
+library(corrplot)
+
+mcor <- cor(mtcars)
+
+# Print mcor and round to 2 digits
+round(mcor, digits = 2)
+
+corrplot(mcor)
+
+# Generate a lighter palette
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+corrplot(mcor, method = "shade", shade.col = NA, tl.col = "black", tl.srt = 45,
+         col = col(200), addCoef.col = "black", cl.pos = "n", order = "AOE")
+```
+
+
+
+
+
+#Wrangling the hwinfo data set 
+```{r eval=FALSE, include=FALSE}
+#the -2 removes the last 2 observations in the data set which are just descriptors of the variables 
+timespy <- head(timespy, -2)
+
+#Converting all the variables in the dataset, expect for date, into numeric variables
+timespy_num <- as.data.frame(lapply(timespy[,-1], as.numeric))
+
+#imputing date variable back into the timespy_num dataframe
+timespy <- cbind(timespy$`Date/Time`, timespy_num)
+
+#Rename the date column we just added back above 
+names(timespy)[names(timespy) == "timespy$`Date/Time`"] <- "DateTime"
+
+# Convert DateTime variable to POSIXct format
+timespy$DateTime <- ymd_hms(timespy$DateTime)
+
+# Convert DateTime variable to numeric representing seconds since initialization point
+timespy$seconds <- as.numeric(timespy$DateTime - min(timespy$DateTime))
+
+#removing unimportant datasets
+rm(timespy_num)
+```
+
+
+
+
+```{r eval=FALSE, include=FALSE}
+#Getting the basic summary statistics for all of the relevant variables in the dataframe 
+head_sum <- headed_num %>% select(-DateTime, -seconds)
+
+#Applying the summary function to every variable in our modified head_sum dataframe
+summary <- lapply(head_sum, summary)
+
+#Getting the variable names from the summary list so that I can index into specific variable of interst 
+head_sum_names_list <- names(summary)
+
+summary[["GPU.Temperature...C."]]
+
+summary
+```
+
+

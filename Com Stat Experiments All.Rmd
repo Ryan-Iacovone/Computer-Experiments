@@ -1,3 +1,6 @@
+# RAM Analysis looking at the impact of XMP on performance
+
+## Data Wrangling 
 ```{r}
 library(tidyverse)
 library(readxl)
@@ -12,9 +15,6 @@ ram <- read_excel(excel_file_hwinfo, sheet = "ram_test")
 ```
 
 
-################################################### XMP MHz for RAM ################################################### 
-
-
 ```{r}
 #Getting the trial number order for the test set 
 
@@ -25,11 +25,11 @@ shuffled_digits  # print the shuffled digits
 ```
 
 
-###### Visualizing the dataset prior to the t-test and checking assumptions ###### 
+## Visualizing the dataset prior to the t-test and checking assumptions ###### 
 
+
+### Parallel Dot Plot
 ```{r}
-#Parallel Dot Plot
-
 ram %>% ggplot(aes(x= MHz, y = timespy_total)) + 
   geom_point() + 
   labs(y = "Timespy Score",
@@ -38,9 +38,8 @@ ram %>% ggplot(aes(x= MHz, y = timespy_total)) +
 ```
 
 
+### Residual vs predicted graph 
 ```{r}
-#Residual vs predicted graph 
-
 # create a linear regression model
 reg_model_ram <- lm(timespy_total ~ MHz, data = ram)
 
@@ -59,16 +58,19 @@ ggplot(ram, aes(x = predicted, y = residual)) +
 ```
 
 
+### Normal Quantiles plot
 ```{r}
-#Normal Quantiles plot
-
 ggplot(ram, aes(sample = reg_model_ram$residuals)) + 
   stat_qq() + 
   stat_qq_line() + 
   labs(x = "Normal Quantiles",
        y = "Residuals",
        title = "Normal Quantiles Plot to Examine Normality")
+```
 
+
+### Calculating skewness and kurtosis
+```{r}
 # Calculate skewness
 skewness(reg_model_ram$residuals)
 
@@ -80,9 +82,8 @@ summary(reg_model_ram$residuals)
 ```
 
 
+### plot of residuals vs. nuisance influence (such as trial number) to examine Independence assumption 
 ```{r}
-#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
-
 ggplot(ram, aes(x = Trial, y = residual)) +
   geom_point() +
   geom_hline(yintercept = 0, color = "red") +
@@ -93,6 +94,7 @@ ggplot(ram, aes(x = Trial, y = residual)) +
 ```
 
 
+## Means table grouped by ram speed (MHz) t-tset analysis 
 ```{r}
 #Means table grouped by ram speed (MHz)
 ram %>% group_by(MHz) %>% summarise(n_mean = mean(timespy_total))
@@ -114,10 +116,10 @@ t_test_ram
 
 
 
-################################################### CPU Experiment Desktop ################################################### 
+# CPU Experiment Desktop
 
 
-
+## Data wrangling
 ```{r}
 library(tidyverse)
 library(readxl)
@@ -148,12 +150,11 @@ shuffled_digits  # print the shuffled digits
 ```
 
 
-###### Visualizing the dataset prior to the t-test and checking assumptions ###### 
+## Visualizing the dataset and checking assumptionsprior prior to t-test 
 
 
+### Parallel Dot Plot
 ```{r}
-#Parallel Dot Plot
-
 cpu$treatment <- paste(cpu$Clock, cpu$Voltage, sep = " & ")
 
 cpu %>% ggplot(aes(x= treatment, y = Cinebench)) + 
@@ -169,9 +170,8 @@ cpu %>% ggplot(aes(x= treatment, y = Cinebench)) +
 ```
 
 
+### Residual vs predicted graph 
 ```{r}
-#Residual vs predicted graph 
-
 # create a linear regression model 
 base_model_cpu <- lm(Cinebench ~ Voltage + Clock , data = cpu)
 
@@ -191,15 +191,19 @@ ggplot(cpu, aes(x = predicted, y = residual)) +
 ```
 
 
+### Normal Quantiles plot
 ```{r}
-#Normal Quantiles plot
 ggplot(cpu, aes(sample = base_model_cpu$residuals)) + 
   stat_qq() + 
   stat_qq_line() + 
   labs(x = "Normal Quantiles",
        y = "Residuals",
        title = "Normal Quantiles Plot to Examine Normality")
+```
 
+
+### Calculate skewness and kurtosis
+```{r}
 # Calculate skewness
 skewness(base_model_cpu$residuals)
 
@@ -208,12 +212,11 @@ kurtosis(base_model_cpu$residuals)
 
 hist(base_model_cpu$residuals)
 summary(base_model_cpu$residuals)
-
 ```
 
 
+### Plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
 ```{r}
-#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
 ggplot(cpu, aes(x = Trial, y = residual)) +
   geom_point() +
   geom_hline(yintercept = 0, color = "red") +
@@ -221,13 +224,11 @@ ggplot(cpu, aes(x = Trial, y = residual)) +
        y = "Residuals",
        title = "Independence Assumption") +
   theme_clean()
-
 ```
 
 
+### Interaction Plot - no interaction 
 ```{r}
-#Interaction Plot - no interaction 
-
 mean_cinebench_cpu <- cpu %>% 
   group_by(Voltage, Clock) %>% 
   summarise(m_cinebench = mean(Cinebench, na.rm = TRUE), n = n()) %>% 
@@ -280,7 +281,7 @@ ggplot(mean_cinebench_cpu, aes(x = Clock, y = m_cinebench, color = Voltage, grou
 ```
 
 
-#Regression Model
+## Regression Model
 ```{r}
 #Voltage:Clock is the interaction variable(but it;s not significant)
 
@@ -297,7 +298,20 @@ summary(mod)
 ```
 
 
-#Optimization of Voltage and CPU clock for more efficient power and temps  
+### Confidence Interval Chart
+```{r}
+# obtain the 95% confidence intervals for main effects of voltage and clock speed
+
+ci_volts <- emmeans(cpu_model, ~ Voltage)
+ci_clock <- emmeans(cpu_model, ~ Clock)
+
+
+# obtain the 95% confidence intervals for simple effects
+ci_both <- emmeans(cpu_model, ~ Voltage + Clock)
+```
+
+
+## Optimization of Voltage and CPU clock for more efficient power and temps  
 ```{r eval=FALSE, include=FALSE}
 # Set the maximum temperature and power draw values that the algorithm will use to find the optimal combination of voltage and clock speed.
 max_temp <- 85
@@ -341,23 +355,10 @@ cat("Predicted score:", max_score, "\n")
 ```
 
 
-# Confidence Interval Chart
-```{r}
-# obtain the 95% confidence intervals for main effects of voltage and clock speed
 
-ci_volts <- emmeans(cpu_model, ~ Voltage)
-ci_clock <- emmeans(cpu_model, ~ Clock)
+# CPU Experiment Laptop
 
-
-# obtain the 95% confidence intervals for simple effects
-ci_both <- emmeans(cpu_model, ~ Voltage + Clock)
-```
-
-
-
-
-
-###### CPU Experiment Laptop ###### 
+## Data Wrangling
 ```{r}
 library(tidyverse)
 library(readxl)
@@ -378,9 +379,8 @@ cpu_lap$Clock <- factor(cpu_lap$Clock, levels = c(3.3, 3.4, 3.5))
 ```
 
 
+### Parallel Dot Plot (Can't put the x axis in same order as SAS)
 ```{r}
-#Parallel Dot Plot (Can't put the x axis in same order as SAS)
-
 #Creating a new variable called treatment that combines my two predictors together for easy visualization
 cpu_lap$treatment <- paste(cpu_lap$Voltage, cpu_lap$Clock, sep = " & ")
 
@@ -394,17 +394,16 @@ cpu_lap %>% ggplot(aes(x= treatment, y = Cinebench)) +
 ```
 
 
+### create a linear regression model 
 ```{r}
-# create a linear regression model 
 model_cpu_lap <- lm(Cinebench ~ Voltage + Clock, data = cpu_lap)
 
 summary(model_cpu_lap)
 ```
 
 
+### Residual vs predicted graph
 ```{r}
-#Residual vs predicted graph
-
 # calculate predicted values and residuals and inputs the values into the original data frame
 cpu_lap$predicted <- predict(model_cpu_lap)
 cpu_lap$residual <- residuals(model_cpu_lap)
@@ -420,6 +419,7 @@ ggplot(cpu_lap, aes(x = predicted, y = residual)) +
 ```
 
 
+### Normal Quantiles plot
 ```{r}
 #Normal Quantiles plot
 ggplot(cpu_lap, aes(sample = model_cpu_lap$residuals)) + 
@@ -433,13 +433,16 @@ ggplot(cpu_lap, aes(sample = model_cpu_lap$residuals)) +
 
 #ks.test(model_cpu_lap$residuals, "pnorm")
 #shapiro.test(model_cpu_lap$residuals)
+```
 
+
+### Calculate skewness and kurtosis
+```{r}
 # Calculate skewness
 skewness(model_cpu_lap$residuals)
 
 # Calculate kurtosis
 kurtosis(model_cpu_lap$residuals)
-
 
 hist(model_cpu_lap$residuals)
 summary(model_cpu_lap$residuals)
@@ -467,8 +470,8 @@ qqline(model_cpu_lap$residuals, col = "darkorange", lwd = 2) # change the line c
 ```
 
 
+### plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
 ```{r}
-#plot of residuals vs. your nuisance influence (such as trial number) to examine Independence assumption 
 ggplot(cpu_lap, aes(x = Trial, y = residual)) +
   geom_point() +
   geom_hline(yintercept = 0, color = "red") +
@@ -480,9 +483,8 @@ ggplot(cpu_lap, aes(x = Trial, y = residual)) +
 ```
 
 
+### Interaction Plot 
 ```{r}
-#Interaction Plot 
-
 mean_cinebench_cpulap <- cpu_lap %>% group_by(Voltage, Clock) %>% summarise(m_cinebench = mean(Cinebench), n = n()) %>% ungroup() %>% as.data.frame()
 
 #mean_cinebench_cpulap$Voltage <- factor(mean_cinebench_cpulap$Voltage, levels = c(0, -80.1, -160.2))
@@ -510,7 +512,7 @@ ggplot(mean_cinebench_cpulap, aes(x = Clock, y = m_cinebench, color = Voltage, g
 ```
 
 
-# Confidence Interval Chart
+### Confidence Interval Chart
 ```{r}
 # obtain the 95% confidence intervals for main effects of voltage and clock speed
 
@@ -528,11 +530,7 @@ ci_both <- emmeans(model_cpu_lap, ~ Voltage + Clock)
 #To illustrate the difference between a main effect and a simple effect, consider a study examining the effect of a new teaching method (Method A vs. Method B) on students' test scores, while controlling for students' prior knowledge (low vs. high). In this study, the main effect of teaching method represents the average effect of Method A compared to Method B, across all levels of students' prior knowledge. The simple effect of teaching method at a particular level of students' prior knowledge represents the effect of Method A compared to Method B, but only for students at that specific level of prior knowledge.
 
 #In summary, a main effect represents the overall effect of an independent variable on the dependent variable, while a simple effect represents the effect of an independent variable at a specific level of another independent variable.
-
-
 ```
-
-
 
 
 

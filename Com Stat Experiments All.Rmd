@@ -9,7 +9,7 @@ library(ggthemes)
 library(moments) #used to calculate skewness and kurtosis
 library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
 
-excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
 
 ram <- read_excel(excel_file_hwinfo, sheet = "ram_test")
 ```
@@ -129,7 +129,7 @@ library(moments) #used to calculate skewness and kurtosis
 library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
 
 #Reading in the excel file
-excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
 
 cpu <- read_excel(excel_file_hwinfo, sheet = "cpu_test")
 
@@ -368,7 +368,7 @@ library(moments) #used to calculate skewness and kurtosis
 library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
 library(corrplot)
 
-excel_file_hwinfo = "C:/Users/Ryan/Coding Projects/Computer Experiment/Data/experiment_hwinfo.xlsx"
+excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
 
 cpu_lap <- read_excel(excel_file_hwinfo, sheet = "cpu_lap")
 

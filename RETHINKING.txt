@@ -1,0 +1,2 @@
+I think I need to rethink my approach to my statisitcal experiment with my computer away from numberic values and towards the categorical
+variables that I'm able to collect (like low, med, and high voltage or clock speed)

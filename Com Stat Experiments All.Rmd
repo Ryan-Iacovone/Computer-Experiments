@@ -8,6 +8,7 @@ library(lubridate) #for date extraction and manipulation
 library(ggthemes)
 library(moments) #used to calculate skewness and kurtosis
 library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
+library(corrplot) # used for collinearity graph
 
 excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
 
@@ -50,10 +51,17 @@ ram$residual <- residuals(reg_model_ram)
 # plot the residuals vs predicted values using a scatter plot
 ggplot(ram, aes(x = predicted, y = residual)) +
   geom_point() +
+  
   geom_hline(yintercept = 0, color = "red") +
+  
   labs(x = "Predicted values", 
        y = "Residuals",
        title = "Residual vs Predicted plot") +
+  
+  scale_x_continuous(breaks = seq(18600, 19300, by = 100),
+                    #minor_breaks = seq(0, 300, by = 25),
+                      limits = c(18600, 19300)) +
+  
   theme_clean()
 ```
 
@@ -133,7 +141,9 @@ excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
 
 cpu <- read_excel(excel_file_hwinfo, sheet = "cpu_test")
 
-#Converting voltage and clock speed into factor variables for the following analysis 
+#Converting voltage and clock speed into factor variables for the following analysis (This is a conscious choice vs numeric variables because of how I collected the data really translates into low, medium, and high voltages and clock speed... Not enough data collection for a true numeric variable)
+########### CAN'T INVESTIGATE COLLINEARITY ON THESE DATASETS BECAUSE I'M USING FACTOR VARAIBLES NOT NUMERIC
+
 
 cpu$Voltage <- factor(cpu$Voltage, levels = c(1.1, 1.175, 1.225, 1.275))
 cpu$Clock <- factor(cpu$Clock, levels = c(4, 4.5, 5, 5.4))
@@ -144,7 +154,7 @@ cpu$Clock <- factor(cpu$Clock, levels = c(4, 4.5, 5, 5.4))
 #Getting the trial number order for the test set 
 
 set.seed(123)  # set the seed to reproduce the same results
-digits <- 1:32  # create a vector of digits 1-8
+digits <- 1:32  # create a vector of digits
 shuffled_digits <- sample(digits)  # randomly order the digits
 shuffled_digits  # print the shuffled digits
 ```
@@ -158,7 +168,7 @@ shuffled_digits  # print the shuffled digits
 cpu$treatment <- paste(cpu$Clock, cpu$Voltage, sep = " & ")
 
 cpu %>% ggplot(aes(x= treatment, y = Cinebench)) + 
-  geom_point(position = position_jitter(width = 0.2, height = 0.15)) + 
+  geom_point(position = position_jitter(width = 0.2, height = 0.15)) + #Adding jitter to the points so we can more clealy see each observation
   
   labs(y = "Cinebench Score",
        x = "Core Clock (MHz) & Voltage (Volt)",
@@ -166,7 +176,7 @@ cpu %>% ggplot(aes(x= treatment, y = Cinebench)) +
        caption = "Figure 1.1") + 
   
   theme_clean() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 
@@ -249,7 +259,7 @@ ggplot(mean_cinebench_cpu, aes(x = Voltage, y = m_cinebench, color = Clock, grou
   
   scale_x_discrete(limits = c("1.1", "1.175", "1.225", "1.275")) +
   
-  labs(x = "Clock Speed MHz", y = "Cinebench Score") +
+  labs(x = "Voltage", y = "Cinebench Score") +
   theme_bw() +
   guides(color = guide_legend(reverse = TRUE))
 
@@ -270,7 +280,7 @@ ggplot(mean_cinebench_cpu, aes(x = Clock, y = m_cinebench, color = Voltage, grou
   
   scale_x_discrete(limits = c("4", "4.5", "5", "5.4")) +
   
-  labs(x = "Clock Speed MHz", y = "Cinebench Score") +
+  labs(x = "Clock Speed (MHz)", y = "Cinebench Score") +
   theme_bw() 
 
 #If the lines in an interaction plot are on top of each other, it suggests that there is no interaction effect between the two variables being plotted. This means that the effect of one variable on the response variable is the same regardless of the level of the other variable.
@@ -281,33 +291,40 @@ ggplot(mean_cinebench_cpu, aes(x = Clock, y = m_cinebench, color = Voltage, grou
 ```
 
 
-## Regression Model
+## Two Way ANOVA
 ```{r}
-#Voltage:Clock is the interaction variable(but it;s not significant)
+#Voltage:Clock is the interaction variable(but it's not significant as evident here and the graph above)
 
-cpu$Voltage<- as.numeric(cpu$Voltage)
-cpu$Clock<- as.numeric(cpu$Clock)
+# Fit the ANOVA model
+anova_model <- aov(Cinebench ~ Voltage * Clock, data = cpu)
 
-cpu_model <- lm(Cinebench ~ temp + power + Voltage + Clock + Voltage:Clock, data = cpu)
-summary(cpu_model)
-anova(cpu_model)
+# Print the ANOVA table
+summary(anova_model)
 
-#Testing regression models with just one of the main effects 
-mod <- lm(Cinebench ~ power, data = cpu)
-summary(mod)
+
+#Interesting to see how our model changes if we change the variables from factors into numeric variables and then add a regression analysis (but won't be used for this analysis)
+#cpu$Voltage <- as.numeric(cpu$Voltage)
+#cpu$Clock <- as.numeric(cpu$Clock)
+
+# All variables in a multiple regression analysis model 
+#cpu_model <- lm(Cinebench ~ temp + power + Voltage + Clock + Voltage:Clock, data = cpu)
+#summary(cpu_model)
+#anova(cpu_model)
 ```
+
+
 
 
 ### Confidence Interval Chart
 ```{r}
 # obtain the 95% confidence intervals for main effects of voltage and clock speed
 
-ci_volts <- emmeans(cpu_model, ~ Voltage)
-ci_clock <- emmeans(cpu_model, ~ Clock)
+ci_volts <- emmeans(anova_model, ~ Voltage)
+ci_clock <- emmeans(anova_model, ~ Clock)
 
 
 # obtain the 95% confidence intervals for simple effects
-ci_both <- emmeans(cpu_model, ~ Voltage + Clock)
+ci_both <- emmeans(anova_model, ~ Voltage + Clock)
 ```
 
 
@@ -633,5 +650,3 @@ summary[["GPU.Temperature...C."]]
 
 summary
 ```
-
-

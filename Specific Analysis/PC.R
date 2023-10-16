@@ -10,7 +10,7 @@ library(moments) #used to calculate skewness and kurtosis
 library(emmeans) #Estimated marginal means (Least-squares means) - used for confidence interval calculations
 
 #Reading in the excel file
-excel_file_hwinfo = "Data/experiment_hwinfo.xlsx"
+excel_file_hwinfo = "../Data/experiment_hwinfo.xlsx"
 
 cpu <- read_excel(excel_file_hwinfo, sheet = "cpu_test")
 

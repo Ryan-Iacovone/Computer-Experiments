@@ -1,6 +1,6 @@
 # RAM Analysis looking at the impact of XMP on performance
 
-## Data Wrangling 
+## Data Wrangling SEEME?
 ```{r}
 library(tidyverse)
 library(readxl)
